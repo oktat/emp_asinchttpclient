@@ -4,9 +4,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpRequest.Builder;
 import java.net.http.HttpResponse.BodyHandlers;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class Client {
@@ -14,86 +13,69 @@ public class Client {
     public Client() {
         client = HttpClient.newHttpClient();
     }
-    public CompletableFuture<String> get(String uri) {        
-        HttpRequest request = HttpRequest.newBuilder()
-        .uri(URI.create(uri))
-        .build();        
-
-        return client.sendAsync(request, BodyHandlers.ofString())
-        .thenApply(HttpResponse::body);
+    public CompletableFuture<String> get(String url) {        
+        HttpRequest request = this.generateGetRequest(url);
+        return sendRequest(request);
     }
 
     public CompletableFuture<String> post(String uri, String body, String... token) {
-        List<String> headers = genHeaders();
-        setToken(headers, token);
-        // if(token.length > 0) {
-        //     headers.add("Authorizatin");
-        //     headers.add("Bearer " + token[0]);
-        // }
-
-        HttpRequest request = HttpRequest.newBuilder()
-        .uri(URI.create(uri))
-        .headers(headers.toArray(String[]::new))
-        .POST(HttpRequest.BodyPublishers.ofString(body))
-        .build();
-
-        // return client.sendAsync(request, BodyHandlers.ofString())
-        // .thenApply(HttpResponse::body);
+        HttpRequest request = generatePostRequest(uri, body, token);
         return sendRequest(request);
     }
 
     public CompletableFuture<String> put(String uri, String body, String... token) {        
-        List<String> headers = new ArrayList<>();
-        headers.add("Content-Type");
-        headers.add("application/json");
-
-        if(token.length > 0) {
-            headers.add("Authorization");
-            headers.add("Bearer " + token[0]);
-        }
-
-        HttpRequest request = HttpRequest.newBuilder()
-        .uri(URI.create(uri))
-        .headers(headers.toArray(String[]::new))
-        .PUT(HttpRequest.BodyPublishers.ofString(body))
-        .build();
-
-        return client.sendAsync(request, BodyHandlers.ofString())
-        .thenApply(HttpResponse::body);
+        HttpRequest request = generatePutRequest(uri, body, token);
+        return sendRequest(request);
     }
 
     public CompletableFuture<String> delete(String uri, String... token) {
-        List<String> headers = new ArrayList<>();
-        headers.add("Content-Type");
-        headers.add("application/json");
+        HttpRequest request = generateDeleteRequest(uri, token);        
+        return sendRequest(request);
+    }
 
-        if(token.length > 0) {
-            headers.add("Authorization");
-            headers.add("Bearer " + token[0]);
-        }
-
-        HttpRequest request = HttpRequest.newBuilder()
-        .uri(URI.create(uri))
-        .headers(headers.toArray(String[]::new))
-        .DELETE()
-        .build();
+    private HttpRequest generateGetRequest(String url) {
+        Builder builder = HttpRequest.newBuilder();
+        builder.uri(URI.create(url));
+        builder.GET();
         
-        return client.sendAsync(request, BodyHandlers.ofString())
-        .thenApply(HttpResponse::body);
+        return builder.build();
     }
 
-    private List<String> genHeaders() {
-        List<String> headers = new ArrayList<>();
-        headers.add("Content-Type");
-        headers.add("application/json");
-        return headers;
+    private HttpRequest generatePostRequest(String url, String body, String... args) {
+        Builder builder = HttpRequest.newBuilder();
+        builder.uri(URI.create(url));
+        builder.POST(HttpRequest.BodyPublishers.ofString(body));
+        builder.header("Content-Type", "application/json");
+        if(args.length > 0) {
+            String token = args[0];
+            builder.header("Authorization", "Bearer " + token);
+        }        
+        return builder.build();
     }
-    private void setToken(List<String> headers, String[] token) {
-        if(token.length > 0) {
-            headers.add("Authorization");
-            headers.add("Bearer " + token[0]);
-        }
+
+    private HttpRequest generatePutRequest(String url, String body, String... args) {
+        Builder builder = HttpRequest.newBuilder();
+        builder.uri(URI.create(url));
+        builder.PUT(HttpRequest.BodyPublishers.ofString(body));
+        builder.header("Content-Type", "application/json");
+        if(args.length > 0) {
+            String token = args[0];
+            builder.header("Authorization", "Bearer " + token);
+        }        
+        return builder.build();
     }
+
+    private HttpRequest generateDeleteRequest(String url, String... args) {
+        Builder builder = HttpRequest.newBuilder();
+        builder.uri(URI.create(url));
+        builder.DELETE();
+        if(args.length > 0) {
+            String token = args[0];
+            builder.header("Authorization", "Bearer " + token);
+        }        
+        return builder.build();
+    }
+
     public CompletableFuture<String> sendRequest(HttpRequest request) {
         return client.sendAsync(request, BodyHandlers.ofString())
         .thenApply(HttpResponse::body);
